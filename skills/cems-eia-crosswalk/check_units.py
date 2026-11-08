@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# cems-eia-crosswalk check_units.py 0.1.0
+# cems-eia-crosswalk check_units.py 0.2.0
 # Copyright 2026 MV2, Munim, Inc. Licensed under the Apache License, Version 2.0 (Apache-2.0).
 # Made with AI agents working in MV2's name. No person has checked the listed rows by hand.
 """Flag EPA CEMS units that hit known problems in the EPA-EIA crosswalk.
@@ -8,11 +8,14 @@ Reads a CSV that has at least the columns plant_id_epa and emissions_unit_id_epa
 (optionally report_year). PUDL's core_epa__assn_eia_epacamd, a list of CEMS units,
 or a joined emissions table all work. Standard library only; no network.
 
-It checks each unit against two tables shipped next to this script:
-  known_issues.csv        19 crosswalk rows that are missing or point at the wrong
-                          generator (pre-registered checks, PUDL nightly, Nov 2026)
-  gap_units_2018_2024.csv 317 unit-years with a CEMS peak load, no crosswalk row
-                          and no unlinked operating EIA generator to link to
+It checks each unit against three tables shipped next to this script:
+  known_issues.csv              19 crosswalk rows that are missing or point at the wrong
+                                generator (pre-registered checks, PUDL nightly, Nov 2026)
+  gap_units_2018_2024.csv       317 unit-years with a CEMS peak load, no crosswalk row
+                                and no unlinked operating EIA generator to link to
+  gap_retirement_2018_2024.csv  for the 228 of them whose EIA plant had no generator row
+                                or no operating one: whether all of the plant's combustion
+                                generators had retired before the report year
 and one rule: EPA-assigned plant ids that start with 88 (six digits) have no EIA plant.
 
 Exit codes: 0 done; 1 hits found and --fail-on-hit given; 2 bad input.
@@ -23,10 +26,11 @@ import json
 import os
 import sys
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 HERE = os.path.dirname(os.path.abspath(__file__))
 KNOWN = os.path.join(HERE, "known_issues.csv")
 GAPS = os.path.join(HERE, "gap_units_2018_2024.csv")
+RETIRED = os.path.join(HERE, "gap_retirement_2018_2024.csv")
 
 GAP_TEXT = {
     "absent": ("No EIA-860 generator row at EIA plant {eia} in PUDL for {year}, so there is "
@@ -38,6 +42,22 @@ GAP_TEXT = {
     "all_linked": ("Every operating combustion generator at EIA plant {eia} is already linked "
                    "to other CEMS units in {year}; this unit has no row. Generators that fit its "
                    "peak: {fit}. In Open Grid Emissions' manual crosswalk: {oge}."),
+}
+
+RETIRED_TEXT = {
+    "retired_before": (" EIA-860 (last listing {last}) has every combustion generator of the "
+                       "plant retired by {ret}, before {year}: most likely a retired unit kept by "
+                       "the trailing window, not a missing link."),
+    "retired_in_year": (" EIA-860 (last listing {last}) has every combustion generator of the "
+                        "plant retired, the last in {year}."),
+    "never_listed": (" The EIA plant has no EIA-860 generator row in any year up to {year}."),
+    "other": (" EIA-860 (last listing {last}) does not show the whole plant retired before "
+              "{year} ({cause})."),
+}
+CAUSE_TEXT = {
+    "undated": "a combustion generator has no retirement date",
+    "after_year": "a combustion generator retires after the report year",
+    "no_combustion": "no combustion generator in the listing",
 }
 
 
@@ -57,23 +77,34 @@ def norm_year(v):
     return s if s.isdigit() else ""
 
 
-def load_known(path=KNOWN):
+def _read(path):
     with open(path, newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
+        return list(csv.DictReader(f))
+
+
+def load_known(path=KNOWN):
     out = {}
-    for r in rows:
+    for r in _read(path):
         key = (norm_plant(r["plant_id_epa"]), norm_unit(r["emissions_unit_id_epa"]))
         out.setdefault(key, []).append(r)
     return out
 
 
 def load_gaps(path=GAPS):
-    with open(path, newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
     out = {}
-    for r in rows:
+    for r in _read(path):
         key = (norm_plant(r["plant_id_epa"]), norm_unit(r["emissions_unit_id_epa"]))
         out.setdefault(key, []).append(r)
+    return out
+
+
+def load_retired(path=RETIRED):
+    """{(plant_id_epa, unit, report_year): row}."""
+    out = {}
+    for r in _read(path):
+        key = (norm_plant(r["plant_id_epa"]), norm_unit(r["emissions_unit_id_epa"]),
+               norm_year(r["report_year"]))
+        out[key] = r
     return out
 
 
@@ -93,10 +124,19 @@ def is_epa_only_id(plant):
     return len(plant) == 6 and plant.startswith("88") and plant.isdigit()
 
 
-def check_rows(rows, known=None, gaps=None):
+def retirement_note(r):
+    """Text added to a gap finding from a gap_retirement row."""
+    cls = r["class"]
+    return RETIRED_TEXT.get(cls, "").format(
+        last=r["last_listed_year"] or "none", ret=r["latest_retirement_year"] or "?",
+        year=r["report_year"], cause=CAUSE_TEXT.get(r["cause"], r["cause"] or "unknown"))
+
+
+def check_rows(rows, known=None, gaps=None, retired=None):
     """rows: iterable of dicts. Returns a list of findings (dicts)."""
     known = load_known() if known is None else known
     gaps = load_gaps() if gaps is None else gaps
+    retired = load_retired() if retired is None else retired
     findings = []
     seen = set()
     for r in rows:
@@ -128,13 +168,21 @@ def check_rows(rows, known=None, gaps=None):
                 eia=g["plant_id_eia"], year=g["report_year"], reason=g["reason"],
                 fit=g["linked_generators_that_fit"] or "none",
                 oge="yes" if g["in_oge_manual"] == "True" else "no")
-            findings.append({
+            f = {
                 "plant_id_epa": plant, "emissions_unit_id_epa": unit,
                 "report_year": g["report_year"], "kind": "gap_" + g["reason"],
                 "issue_id": None, "peak_mw": g["max_gross_load_mw"],
                 "in_oge_manual": "yes" if g["in_oge_manual"] == "True" else "no",
                 "source_doc": "xwgap.md", "message": text,
-            })
+            }
+            ret = retired.get((plant, unit, g["report_year"]))
+            if ret is not None:
+                f["retirement_class"] = ret["class"]
+                f["last_eia860_listing"] = ret["last_listed_year"] or None
+                f["latest_retirement_year"] = ret["latest_retirement_year"] or None
+                f["source_doc"] = "xwgap.md; xwstale.md"
+                f["message"] = text + retirement_note(ret)
+            findings.append(f)
         if is_epa_only_id(plant) and (plant, "*88*") not in seen:
             seen.add((plant, "*88*"))
             findings.append({
