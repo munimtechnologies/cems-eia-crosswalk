@@ -1,0 +1,20 @@
+issue_id,kind,plant_id_epa,emissions_unit_id_epa,linked_in_pudl,suggested_plant_id_eia,suggested_generator_ids,report_years,in_oge_manual,source_doc,note
+K01,whole_cc_block_no_row,60345,OCEC1A,,60345,1A;1ST,2019-2024,yes,xwpair.md,Okeechobee Clean Energy Center: combined-cycle block with no crosswalk row; CT 1A (376.6 MW) and steam turbine 1ST (593.3 MW CA) are operating and unlinked
+K02,whole_cc_block_no_row,60345,OCEC1B,,60345,1B;1ST,2019-2024,yes,xwpair.md,Okeechobee Clean Energy Center: combined-cycle block with no crosswalk row; CT 1B (376.6 MW) and steam turbine 1ST (593.3 MW CA)
+K03,whole_cc_block_no_row,60345,OCEC1C,,60345,1C;1ST,2019-2024,yes,xwpair.md,Okeechobee Clean Energy Center: combined-cycle block with no crosswalk row; CT 1C (376.6 MW) and steam turbine 1ST (593.3 MW CA)
+K04,whole_cc_block_no_row,55524,5,,55524,CTG5;STG2,2019-2024,yes,xwpair.md,York Energy Center block 2: CT CTG5 (234.9 MW) and steam turbine STG2 (419.6 MW CA) unlinked
+K05,whole_cc_block_no_row,55524,6,,55524,CTG6;STG2,2019-2024,yes,xwpair.md,York Energy Center block 2: CT CTG6 (234.9 MW) and steam turbine STG2 (419.6 MW CA) unlinked
+K06,whole_cc_block_no_row,55098,1,,55098,GEN1;GEN3,2018-2024,no,xwpair.md,Frontera Generation Facility (Texas): CTs GEN1/GEN2 (172 MW) and steam turbine GEN3 (185 MW CA) operating in EIA-860 from 2023; which CT belongs to which CEMS unit is an unchecked assumption
+K07,whole_cc_block_no_row,55098,2,,55098,GEN2;GEN3,2018-2024,no,xwpair.md,Frontera Generation Facility (Texas): see K06; unit-to-CT assignment unchecked
+K08,whole_cc_block_no_row,55248,CT4,,2847,GT4,2019-2024,yes,xwpair.md,Tait: EPA plant 55248 is EIA plant 2847; ids differ only by the CT/GT prefix (94 MW GT)
+K09,whole_cc_block_no_row,55248,CT5,,2847,GT5,2019-2024,yes,xwpair.md,Tait: EPA plant 55248 is EIA plant 2847 (94 MW GT)
+K10,whole_cc_block_no_row,55248,CT6,,2847,GT6,2019-2024,yes,xwpair.md,Tait: EPA plant 55248 is EIA plant 2847 (94 MW GT)
+K11,whole_cc_block_no_row,55248,CT7,,2847,GT7,2019-2024,yes,xwpair.md,Tait: EPA plant 55248 is EIA plant 2847 (94 MW GT)
+K12,whole_cc_block_no_row,6061,3,,6061,MOR2;MOR1,2022-2024,yes,xwpair.md,CEMS unit 3 (591 MW peak): CT MOR2 (402 MW) and steam turbine MOR1 (156 MW CA) unlinked; OGE maps the unit to both
+K13,linked_to_small_generator,57865,1,57865/E01,58835,ELK1,2018-2024,no,xwdev.md,Antelope Elk: CAMD generator ELK1 (202 MW) linked to a 9.3 MW IC engine; Elk Station 58835/ELK1 (199.8 MW GT) has no row
+K14,linked_to_small_generator,57865,2,57865/E02,58835,ELK2,2018-2024,no,xwdev.md,Antelope Elk: CAMD generator ELK2 (202 MW) linked to a 9.3 MW IC engine; 58835/ELK2 (199.8 MW GT) has no row
+K15,linked_to_small_generator,57865,3,57865/E03,58835,ELK3,2018-2024,no,xwdev.md,Antelope Elk: CAMD generator ELK3 (202 MW) linked to a 9.3 MW IC engine; 58835/ELK3 (199.8 MW GT) has no row
+K16,linked_to_small_generator,1571,SMECO,1571/GT1,61890,SGT1,2018-2020;2023-2024,partly,xwpudl.md,Chalk Point: CAMD generator SGT1 (93 MW) linked to 1571/GT1 (16 MW GT); NRG Chalk Point CT 61890/SGT1 (94 MW GT) has no row; PUDL has no SMECO row at all in 2021-2022 and OGE maps SMECO to 65285/GT1 in those years which cuts against this lead
+K17,steam_generator_folded_onto_ct,422,GT5,422/GT5,422,ST1,2018-2024,no,ccsplit.md,Glenarm: CAMD generators CTG5 and STG5 both linked to the 71 MW CT GT5; steam turbine ST1 (16 MW CA) has no row
+K18,steam_generator_folded_onto_ct,58478,CC01,58478/LEPA1,58478,LEPA2,2018-2024,no,ccsplit.md,LEPA Unit No. 1: CAMD generators CTG1 and STG1 both linked to the 57 MW CT LEPA1; steam turbine LEPA2 (17.1 MW CA) has no row
+K19,steam_generator_folded_onto_ct,60589,CT-1,60589/GEN1,60589,GEN3,2019-2024,not_checked,ccsplit.md,CPV Fairview Energy Center: CAMD generators CTGEN1 and ST-1 both linked to the 372 MW CT GEN1; steam turbine GEN3 (453 MW CA) has no row
