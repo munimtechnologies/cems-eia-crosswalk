@@ -6,7 +6,7 @@ license: Apache-2.0
 
 # CEMS to EIA crosswalk traps
 
-By MV2 of Munim, Inc. (mv2@munimtech.com), from github.com/munimtechnologies/cems-eia-crosswalk (skill 0.2.1; checker check_units.py version 0.2.0). This skill and its checker were made with AI agents working in MV2's name. Skill and checker: Apache-2.0. The three tables: CC BY 4.0, derived from PUDL (CC BY 4.0, Catalyst Cooperative) and Open Grid Emissions' manual crosswalk (MIT). No person has checked the listed rows against the plants.
+By MV2 of Munim, Inc. (mv2@munimtech.com), from github.com/munimtechnologies/cems-eia-crosswalk (skill 0.2.2; checker check_units.py version 0.2.0). This skill and its checker were made with AI agents working in MV2's name. Skill and checker: Apache-2.0. The three tables: CC BY 4.0, derived from PUDL (CC BY 4.0, Catalyst Cooperative) and Open Grid Emissions' manual crosswalk (MIT). No person has checked the listed rows against the plants.
 
 EPA's CEMS reports emissions by **emissions unit** (a boiler or turbine with a stack monitor). EIA reports capacity and generation by **generator**. Every generator-level emissions number, emission rate or plant-level CO2 total that mixes the two depends on the EPA-EIA crosswalk. In PUDL that is `core_epa__assn_eia_epacamd` (columns `report_year, plant_id_epa, emissions_unit_id_epa, generator_id_epa, plant_id_eia, boiler_id, generator_id`), with subplant groups in `core_epa__assn_eia_epacamd_subplant_ids` (`plant_id_eia, plant_id_epa, subplant_id, unit_id_pudl, emissions_unit_id_epa, generator_id`).
 
@@ -15,6 +15,7 @@ EPA's CEMS reports emissions by **emissions unit** (a boiler or turbine with a s
 - The user joins CEMS data (`core_epacems__hourly_emissions`, `out_epacems__yearly_operational_characteristics`, CAMPD downloads) to EIA-860/923 tables.
 - CEMS units "disappear" after a merge, a plant's emissions look too low, a combined cycle's emission rate per MWh looks too high, or a plant that closed years ago shows a row for a recent year.
 - The user asks whether a specific CEMS unit (plant id + unit id) is linked correctly.
+- The user wants to rebuild or extend the EPA side of EPA's camd-eia-crosswalk now that EPA's FACT API no longer works (trap 10).
 
 Not for: non-US data, or EIA-only questions with no CEMS side.
 
@@ -32,6 +33,10 @@ Not for: non-US data, or EIA-only questions with no CEMS side.
 7. **EPA and EIA plant ids differ.** Never assume `plant_id_epa == plant_id_eia`; take `plant_id_eia` from the crosswalk (Tait: EPA 55248, EIA 2847). PUDL's hourly table converts CEMS local standard time to `operating_datetime_utc` with the timezone of the unit's EIA plant, and a unit with no crosswalk row falls back to its EPA id; a check of the PUDL build of 8 November 2026 found every CEMS unit of the yearly table in 2018-2024 resolves to an EIA plant with a timezone and none borrows another plant's id, so wrong or null UTC times are not expected there (other years were not checked).
 8. **EPA-only 88xxxx ids.** Six-digit plant ids starting with 88 are assigned by EPA's Clean Air Markets Division when EIA has none; there may be no EIA generator to match (880079 and 880102 have gap units every year 2018-2024).
 9. **Downstream fixes exist.** Open Grid Emissions keeps a hand-made `epa_eia_crosswalk_manual.csv`; it covers all 10 `gap_all_linked` units of 2024 (none of the other 65) and several blocks above (column `in_oge_manual` in the tables). PUDL issue #5439 plans to integrate it, and PUDL issue #5752 reports traps 4-6. Check both before patching rows yourself.
+10. **EPA's crosswalk build lost its EPA-side source.** EPA's camd-eia-crosswalk (and Catalyst's fork camd-eia-crosswalk-latest) took the CAMD side from EPA's FACT API, which no longer works (camd-eia-crosswalk-latest issue #7); the newest published file is the 2024 build. EPA's public yearly CAMPD facility files (`facility-YYYY.csv` in EPA's EASEY bulk files) can stand in, with two rules from pre-registered checks against that 2024 build:
+    - **Stack the years; one file is not enough.** The 2024 file alone holds 74.5% of the 2024 build's (plant, unit, generator) keys, the 2010-2024 files together 98.1%, and the latest row of each key gives the same state, coordinates and (within 0.05 MW) capacity for every comparable key, the same facility name for all but 2 of 7,039, and the same fuel for 99.77%.
+    - **Units often retire silently in these files.** 390 retired units are listed only as "Operating" until they stop appearing. Take the file's own retirement year where it gives one, else the last year the unit appears: that matches the build's retirement year for 92.6% of 1,645 retired keys (74.8% from the files' own years alone). A unit still in the newest file cannot be called retired by absence; wait for the next year's file, which often says "Operating (Retired MM/DD/YYYY)".
+    The EIA side and the matching steps were not compared; say so if the user relies on this.
 
 ## Run the checker
 
@@ -63,6 +68,6 @@ What it flags, per unit (and year when given):
 
 ## Sources and limits
 
-- Results and code of each pre-registered check (plan published before data was read): github.com/munimtechnologies/eia860m-slip, `docs/xwpair.md`, `docs/ccsplit.md`, `docs/ccsub.md`, `docs/xwdev.md`, `docs/xwpudl.md`, `docs/xwgap.md`, `docs/xwstale.md`, `docs/xwback.md`, `docs/xwtz.md`. `gap_units_2018_2024.csv` is the same file as `data/xwgap-units-2018-2024.csv` there, and `gap_retirement_2018_2024.csv` the same as `data/xwstale-units-2018-2024.csv`.
+- Results and code of each pre-registered check (plan published before data was read): github.com/munimtechnologies/eia860m-slip, `docs/xwpair.md`, `docs/ccsplit.md`, `docs/ccsub.md`, `docs/xwdev.md`, `docs/xwpudl.md`, `docs/xwgap.md`, `docs/xwstale.md`, `docs/xwback.md`, `docs/xwtz.md`, and for trap 10 `docs/easeyx.md` and `docs/easeyx2.md`. `gap_units_2018_2024.csv` is the same file as `data/xwgap-units-2018-2024.csv` there, and `gap_retirement_2018_2024.csv` the same as `data/xwstale-units-2018-2024.csv`.
 - PUDL metadata quoted from `src/pudl/metadata/resources/glue.py` and `epacems.py` (catalyst-cooperative/pudl, main, November 2026).
 - Nobody at Catalyst Cooperative, EPA or Singularity Energy has reviewed these results. Questions or corrections: mv2@munimtech.com or an issue on the repo.
